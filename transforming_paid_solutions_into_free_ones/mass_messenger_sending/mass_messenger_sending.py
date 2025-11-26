@@ -16,6 +16,18 @@ GLOBAL_IMAGE_PATH = None
 logger = None
 
 def setup_log ():
+    """
+    Configura o sistema de logging para a aplicação.
+
+    Cria um logger global com:
+    - Console handler (INFO)
+    - Rotating file handler (DEBUG) em logs/mass_messenger_sending.log
+    - Formatação padrão: timestamp, nome do logger, nível, mensagem
+
+    Retorna:
+        logging.Logger: logger configurado
+    """
+        
     global logger
 
     logger = logging.getLogger("MassMessengerApp")
@@ -31,9 +43,16 @@ def setup_log ():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
+    logger_filename = "mass_messenger_sending.log"
+    logger_dir = os.path.join("transforming_paid_solutions_into_free_ones", "mass_messenger_sending", "logs")
+    logger_path = os.path.join(os.getcwd(), logger_dir, logger_filename)
+
+    if not os.path.exists(logger_dir):
+        os.makedirs(logger_dir)
+
     file_handler = RotatingFileHandler(
-    'mass_messenger_sending.log', 
-    maxBytes = 500000,
+    logger_path,
+    maxBytes = 300000,
     backupCount = 5
     )
 
@@ -45,29 +64,40 @@ def setup_log ():
     return logger
 
 def send_image_message (list_numbers, image_path, caption_text, target_label, progress_bar=None):
+    """
+    Envia uma imagem via WhatsApp para uma lista de números.
+
+    Parâmetros:
+        list_numbers (list): Lista de números de telefone no formato E.164
+        image_path (str): Caminho do arquivo de imagem a ser enviado
+        caption_text (str): Texto da legenda da imagem
+        target_label (ctk.CTkLabel): Label da GUI para mostrar status
+        progress_bar (ctk.CTkProgressBar, opcional): Barra de progresso para atualizar envio
+    """
+
     PHONE_ID = os.environ.get("WA_PHONE_ID") 
     TOKEN = os.environ.get("WA_TOKEN")   
 
     if not PHONE_ID or not TOKEN:
-        error_msg = "ERRO: Variáveis de ambiente WA_PHONE_ID ou WA_TOKEN não configuradas."
+        error_msg = "ERRO: Variaveis de ambiente WA_PHONE_ID ou WA_TOKEN nao configuradas."
         logger.error(error_msg)
         target_label.configure(text = error_msg)
         return 
 
     if not list_numbers:
-        error_msg = "ERRO: Nenhuma lista de números válida foi carregada do CSV."
+        error_msg = "ERRO: Nenhuma lista de numeros valida foi carregada do CSV."
         logger.error(error_msg)
         target_label.configure(text = error_msg)
         return
     
     if not image_path or not os.path.exists(image_path):
-        error_msg = "ERRO: Caminho de imagem inválido ou arquivo inexistente."
+        error_msg = "ERRO: Caminho de imagem invalido ou arquivo inexistente."
         logger.error(error_msg)
         target_label.configure(text = error_msg)
         return
 
     whats = WhatsApp(phone_id = PHONE_ID, token = TOKEN)
-    logger.info(f"Iniciando o envio de imagens para {len(list_numbers)} destinatários.")
+    logger.info(f"Iniciando o envio de imagens para {len(list_numbers)} destinatarios.")
     
     sucess_count = 0
     fail_count = 0
@@ -99,7 +129,7 @@ def send_image_message (list_numbers, image_path, caption_text, target_label, pr
             progress_bar.set(progress)
             target_label.update_idletasks()
 
-    sucess_msg = f"Processo concluído. Sucessos: {sucess_count}, Falhas: {fail_count}"
+    sucess_msg = f"Processo concluido. Sucessos: {sucess_count}, Falhas: {fail_count}"
     logger.info(sucess_msg)
     target_label.configure(text=sucess_msg)
 
@@ -107,23 +137,33 @@ def send_image_message (list_numbers, image_path, caption_text, target_label, pr
         progress_bar.set(1.0)
 
 def send_message (list_numbers, message_text, target_label, progress_bar=None):
+    """
+    Envia uma mensagem de texto via WhatsApp para uma lista de números.
+
+    Parâmetros:
+        list_numbers (list): Lista de números de telefone no formato E.164
+        message_text (str): Texto da mensagem a ser enviado
+        target_label (ctk.CTkLabel): Label da GUI para mostrar status
+        progress_bar (ctk.CTkProgressBar, opcional): Barra de progresso para atualizar envio
+    """
+
     PHONE_ID = os.environ.get("WA_PHONE_ID") 
     TOKEN = os.environ.get("WA_TOKEN")
 
     if not PHONE_ID or not TOKEN:
-        error_msg = "ERRO: Variáveis de ambiente WA_PHONE_ID ou WA_TOKEN não configuradas."
+        error_msg = "ERRO: Variaveis de ambiente WA_PHONE_ID ou WA_TOKEN nao configuradas."
         logger.error(error_msg)
         target_label.configure(text = error_msg)
         return 
 
     if not list_numbers:
-        error_msg = "ERRO: Nenhuma lista de números válida foi carregada do CSV."
+        error_msg = "ERRO: Nenhuma lista de numeros valida foi carregada do CSV."
         logger.error(error_msg)
         target_label.configure(text = error_msg)
         return
 
     whats = WhatsApp(phone_id=PHONE_ID, token=TOKEN)
-    logger.info(f"Iniciando o envio de mensagens para {len(list_numbers)} destinatários.")
+    logger.info(f"Iniciando o envio de mensagens para {len(list_numbers)} destinatarios.")
     
     sucess_count = 0
     fail_count = 0
@@ -163,6 +203,15 @@ def send_message (list_numbers, message_text, target_label, progress_bar=None):
         progress_bar.set(1.0)
 
 def open_image_file(target_label):
+    """
+    Abre um seletor de arquivo para escolher uma imagem.
+
+    Atualiza a variável global GLOBAL_IMAGE_PATH com o caminho da imagem selecionada.
+
+    Parâmetros:
+        target_label (ctk.CTkLabel): Label da GUI para mostrar o nome da imagem selecionada
+    """
+
     global GLOBAL_IMAGE_PATH
     filepath = fd.askopenfilename(
         filetypes = [("Image Files", "*.png;*.jpg;*.jpeg"), ("All Files", "*.*")]
@@ -178,6 +227,14 @@ def open_image_file(target_label):
     target_label.configure(text=f"Imagem carregada: {file_name}")
 
 def open_csv_file (target_label, selected_delimiter_text):
+    """
+    Abre um arquivo CSV, identifica a coluna de números de telefone e armazena os números válidos.
+
+    Parâmetros:
+        target_label (ctk.CTkLabel): Label da GUI para mostrar o status do arquivo
+        selected_delimiter_text (str): Delimitador selecionado na interface (ex: '; (Ponto e Vírgula)')
+    """
+
     global GLOBAL_NUMBERS_LIST
 
     GLOBAL_NUMBERS_LIST = []
@@ -188,7 +245,7 @@ def open_csv_file (target_label, selected_delimiter_text):
     )
 
     if not filepath:
-        logger.warning("Seleção de arquivo CSV cancelada.")
+        logger.warning("Selecao de arquivo CSV cancelada.")
         target_label.configure(text="Nenhum arquivo selecionado")
         return
 
@@ -198,7 +255,7 @@ def open_csv_file (target_label, selected_delimiter_text):
         delimiter_char = ','
     else:
         delimiter_char = ';' 
-        logger.warning(f"Delimitador inválido selecionado: {selected_delimiter_text}. Usando ';' como padrão.")
+        logger.warning(f"Delimitador invalido selecionado: {selected_delimiter_text}. Usando ';' como padrao.")
         
     logger.info(f"Tentando abrir CSV com delimitador: '{delimiter_char}'")
 
@@ -231,7 +288,7 @@ def open_csv_file (target_label, selected_delimiter_text):
             raw_number = row.get(phone_column_name, "").strip()
             
             if not raw_number:
-                logger.warning(f"Aviso: Linha vazia ou sem número na coluna '{phone_column_name}'.")
+                logger.warning(f"Aviso: Linha vazia ou sem numero na coluna '{phone_column_name}'.")
                 continue
 
             try:
@@ -243,17 +300,27 @@ def open_csv_file (target_label, selected_delimiter_text):
                         phonenumbers.PhoneNumberFormat.E164
                     )
                     GLOBAL_NUMBERS_LIST.append(formatted_number)
-                    logger.debug(f"Número válido processado: {formatted_number}")
+                    logger.debug(f"Numero valido processado: {formatted_number}")
                     processed_count += 1
                 else:
-                    logger.warning(f"Aviso: Número inválido/incompleto detectado: {raw_number}")
+                    logger.warning(f"Aviso: Numero invalido/incompleto detectado: {raw_number}")
 
             except phonenumbers.phonenumberutil.NumberParseException as e:
-                logger.warning(f"Aviso: Erro de parsing do número '{raw_number}': {e}")
+                logger.warning(f"Aviso: Erro de parsing do numero '{raw_number}': {e}")
 
-        logger.info(f"Total de {len(GLOBAL_NUMBERS_LIST)} números de telefone processados.")
+        logger.info(f"Total de {len(GLOBAL_NUMBERS_LIST)} numeros de telefone processados.")
 
 def validate_and_send_image(textbox_widget, placeholder_text, state_label, progress_bar):
+    """
+    Valida a entrada de legenda da imagem e inicia o envio da imagem para todos os números.
+
+    Parâmetros:
+        textbox_widget (ctk.CTkTextbox): Caixa de texto contendo a legenda da imagem
+        placeholder_text (str): Texto placeholder da caixa de texto
+        state_label (ctk.CTkLabel): Label da GUI para mostrar status do envio
+        progress_bar (ctk.CTkProgressBar): Barra de progresso da GUI
+    """
+
     caption = textbox_widget.get("1.0", "end-1c") 
     
     if not GLOBAL_NUMBERS_LIST:
@@ -269,22 +336,31 @@ def validate_and_send_image(textbox_widget, placeholder_text, state_label, progr
         return
 
     state_label.configure(text = "Iniciando processo de envio de imagem...")
-    logger.info("Validação de envio de imagem bem-sucedida. Iniciando send_image_message.")
+    logger.info("Validacao de envio de imagem bem-sucedida. Iniciando send_image_message.")
 
     progress_bar.configure(mode="determinate") 
     progress_bar.set(0)
     send_image_thread = threading.Thread(
         target=send_image_message,
-        # Passa todos os argumentos necessários, incluindo a barra de progresso
         args=(GLOBAL_NUMBERS_LIST, GLOBAL_IMAGE_PATH, caption, state_label, progress_bar)
     )
     send_image_thread.start()
 
 def validate_and_send(textbox_widget, placeholder_text, target_label, progress_bar):
+    """
+    Valida a mensagem de texto e inicia o envio para todos os números.
+
+    Parâmetros:
+        textbox_widget (ctk.CTkTextbox): Caixa de texto contendo a mensagem
+        placeholder_text (str): Texto placeholder da caixa de texto
+        target_label (ctk.CTkLabel): Label da GUI para mostrar status do envio
+        progress_bar (ctk.CTkProgressBar): Barra de progresso da GUI
+    """
+
     message = textbox_widget.get("1.0", "end-1c") 
     
     if message == placeholder_text or len(message.strip()) == 0:
-        error_msg = "Erro de Validação. Por favor, digite uma mensagem válida."
+        error_msg = "Erro de Validacao. Por favor, digite uma mensagem valida."
         logger.error(error_msg)
         target_label.configure(text = error_msg)
         return
@@ -296,12 +372,12 @@ def validate_and_send(textbox_widget, placeholder_text, target_label, progress_b
         return
     
     if not GLOBAL_NUMBERS_LIST:
-        error_msg = "Erro de Validação. Por favor, carregue um arquivo CSV válido."
+        error_msg = "Erro de Validacao. Por favor, carregue um arquivo CSV valido."
         logger.error(error_msg)
         target_label.configure(text = error_msg)
         return
     
-    logger.info(f"Mensagem válida. Iniciando envio para {len(GLOBAL_NUMBERS_LIST)} destinatários.")
+    logger.info(f"Mensagem valida. Iniciando envio para {len(GLOBAL_NUMBERS_LIST)} destinatarios.")
     target_label.configure(text="Iniciando processo de envio...")
 
     progress_bar.configure(mode="determinate") 
@@ -309,23 +385,50 @@ def validate_and_send(textbox_widget, placeholder_text, target_label, progress_b
 
     send_thread = threading.Thread(
         target=send_message, 
-        args=(GLOBAL_NUMBERS_LIST, message, target_label, progress_bar) # Passa a barra de progresso como argumento
+        args=(GLOBAL_NUMBERS_LIST, message, target_label, progress_bar)
     )
     send_thread.start()
 
 def handle_focus_in(event, textbox_widget, placeholder_text):
+    """
+    Trata o evento de foco na caixa de texto, removendo o placeholder se presente.
+
+    Parâmetros:
+        event: Evento de foco
+        textbox_widget (ctk.CTkTextbox): Caixa de texto
+        placeholder_text (str): Texto placeholder
+    """
+    
     current_text = textbox_widget.get("1.0", "end-1c")
     if current_text == placeholder_text:
         textbox_widget.delete("1.0", "end")
         textbox_widget.configure(text_color=("black", "white")) 
 
 def handle_focus_out(event, textbox_widget, placeholder_text):
+    """
+    Trata o evento de perda de foco na caixa de texto, reinserindo o placeholder se vazia.
+
+    Parâmetros:
+        event: Evento de perda de foco
+        textbox_widget (ctk.CTkTextbox): Caixa de texto
+        placeholder_text (str): Texto placeholder
+    """
+        
     current_text = textbox_widget.get("1.0", "end-1c")
     if current_text.strip() == "":
         textbox_widget.insert("1.0", placeholder_text)
         textbox_widget.configure(text_color=("gray70", "gray40"))
 
 def update_char_count(event, textbox_widget, count_label):
+    """
+    Atualiza a contagem de caracteres de uma caixa de texto e altera a cor se exceder limite.
+
+    Parâmetros:
+        event: Evento de digitação
+        textbox_widget (ctk.CTkTextbox): Caixa de texto
+        count_label (ctk.CTkLabel): Label que mostra contagem de caracteres
+    """
+    
     mensagem = textbox_widget.get("1.0", "end-1c")
     current_length = len(mensagem)
     max_length = 500
@@ -338,6 +441,15 @@ def update_char_count(event, textbox_widget, count_label):
         count_label.configure(text_color=("gray50", "gray40"))
 
 def go_back(current_window, parent_window, close_all=False):
+    """
+    Fecha a janela atual e retorna para a janela pai. Pode fechar todas as janelas se especificado.
+
+    Parâmetros:
+        current_window (ctk.CTkToplevel): Janela atual
+        parent_window (ctk.CTk): Janela pai
+        close_all (bool): Fecha também a janela pai se True
+    """
+
     current_window.destroy()
     if close_all:
         parent_window.destroy()
@@ -345,7 +457,13 @@ def go_back(current_window, parent_window, close_all=False):
         parent_window.deiconify()
 
 def image_window(parent_window):
-    
+    """
+    Cria a janela para envio de mensagens com imagem.
+
+    Parâmetros:
+        parent_window (ctk.CTk): Janela principal da aplicação
+    """
+
     image_window = ctk.CTkToplevel()
     image_window.title("Envio de mensagens com imagem em massa")
     image_window.geometry("450x600")
@@ -372,11 +490,6 @@ def image_window(parent_window):
     image_label = ctk.CTkLabel(image_window, text="Nenhuma imagem selecionada", wraplength=350)
     image_label.pack(pady=10)
 
-    arq_mensage = ctk.CTkLabel(image_window, text="Insira apenas arquivos CSV separados por ;")
-    arq_mensage.pack(pady=10)
-    arq_button = ctk.CTkButton(image_window, text="Selecionar Arquivo CSV", command=lambda: open_csv_file(file_label, delimiter_var.get()))
-    arq_button.pack(pady=10)
-
     delimiter_label = ctk.CTkLabel(image_window, text="Escolha o delimitador do CSV:")
     delimiter_label.pack(pady=(10, 0))
 
@@ -389,6 +502,11 @@ def image_window(parent_window):
         variable=image_window.delimiter_var
     )
     delimiter_menu.pack(pady=(0, 10))
+
+    arq_mensage = ctk.CTkLabel(image_window, text="Insira apenas arquivos CSV separados por ;")
+    arq_mensage.pack(pady=10)
+    arq_button = ctk.CTkButton(image_window, text="Selecionar Arquivo CSV", command=lambda: open_csv_file(file_label, image_window.delimiter_var.get()))
+    arq_button.pack(pady=10)
 
     file_label = ctk.CTkLabel(image_window, text="Nenhum arquivo selecionado", wraplength=350)
     file_label.pack(pady=10)
@@ -409,6 +527,12 @@ def image_window(parent_window):
     state_label.pack(pady=10)
     
 def simple_window(parent_window):
+    """
+    Cria a janela para envio de mensagens simples de texto.
+
+    Parâmetros:
+        parent_window (ctk.CTk): Janela principal da aplicação
+    """
 
     simple_window = ctk.CTkToplevel()
     simple_window.title("Envio de mensagens simples em massa")
@@ -432,11 +556,6 @@ def simple_window(parent_window):
     simple_textbox.bind("<FocusOut>", lambda event: handle_focus_out(event, simple_textbox, PLACEHOLDER_MSG))
     simple_textbox.bind("<KeyRelease>", lambda event: update_char_count(event, simple_textbox, count_label))
 
-    arq_mensage = ctk.CTkLabel(simple_window, text="Insira apenas arquivos CSV separados por ;")
-    arq_mensage.pack(pady=10)
-    arq_button = ctk.CTkButton(simple_window, text="Selecionar Arquivo CSV", command=lambda: open_csv_file(file_label, delimiter_var.get()))
-    arq_button.pack(pady=10)
-
     delimiter_label = ctk.CTkLabel(simple_window, text="Escolha o delimitador do CSV:")
     delimiter_label.pack(pady=(10, 0))
 
@@ -449,6 +568,11 @@ def simple_window(parent_window):
         variable=simple_window.delimiter_var
     )
     delimiter_menu.pack(pady=(0, 10))
+
+    arq_mensage = ctk.CTkLabel(simple_window, text="Insira apenas arquivos CSV separados por ;")
+    arq_mensage.pack(pady=10)
+    arq_button = ctk.CTkButton(simple_window, text="Selecionar Arquivo CSV", command=lambda: open_csv_file(file_label, simple_window.delimiter_var.get()))
+    arq_button.pack(pady=10)
 
     file_label = ctk.CTkLabel(simple_window, text="Nenhum arquivo selecionado", wraplength=350)
     file_label.pack(pady=10)
@@ -470,6 +594,10 @@ def simple_window(parent_window):
     state_label.pack(pady=10)
     
 def app_window():
+    """
+    Cria a janela principal da aplicação com opções de envio simples ou com imagem.
+    """
+
     ctk.set_appearance_mode("system")
 
     app_window = ctk.CTk()
